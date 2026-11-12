@@ -6,7 +6,12 @@
         android:label="FILKO JARVIS"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:supportsRtl="true">
-
+<queries>
+    <intent>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent>
+</queries>
         <activity
             android:name=".MainActivity"
             android:exported="true">
