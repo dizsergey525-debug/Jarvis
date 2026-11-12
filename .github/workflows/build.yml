@@ -32,6 +32,15 @@ jobs:
               namespace = "com.filko.jarvis"
               compileSdk = 35
 
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+
               defaultConfig {
                   applicationId = "com.filko.jarvis"
                   minSdk = 23
@@ -70,4 +79,3 @@ jobs:
         with:
           name: FILKO-JARVIS-APK
           path: app/build/outputs/apk/debug/app-debug.apk
-          
