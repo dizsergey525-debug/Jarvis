@@ -82,6 +82,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         super.onRequestPermissionsResult(
             requestCode, permissions, grantResults
         )
+
         if (requestCode == REQUEST_MIC) {
             if (grantResults.isNotEmpty() &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -143,20 +144,77 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 startActivity(Intent(Settings.ACTION_SETTINGS))
             }
 
-            normalized.contains("хром") ||
-                normalized.contains("браузер") -> {
-                openApp("com.android.chrome", "Открываю браузер.")
-            }
-
-            normalized.contains("ютуб") ||
-                normalized.contains("youtube") -> {
-                openApp(
-                    "com.google.android.youtube",
-                    "Открываю YouTube."
-                )
+            normalized.contains("открой") ||
+            normalized.contains("запусти") ||
+            normalized.contains("открывай") ||
+            normalized.contains("включи приложение") -> {
+                openInstalledApp(command)
             }
 
             else -> askJarvis(command)
+        }
+    }
+
+    private fun openInstalledApp(command: String) {
+        var appName = command.lowercase(Locale.ROOT)
+
+        val wordsToRemove = listOf(
+            "джарвис", "открой", "открывай", "запусти",
+            "запуск", "приложение", "приложения",
+            "пожалуйста", "мне", "включи"
+        )
+
+        for (word in wordsToRemove) {
+            appName = appName.replace(word, " ")
+        }
+
+        appName = appName
+            .replace(Regex("[^\\p{L}\\p{N} ]"), " ")
+            .trim()
+            .replace(Regex("\\s+"), " ")
+
+        if (appName.isBlank()) {
+            say("Какое приложение открыть, сэр?")
+            return
+        }
+
+        val launcherIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
+
+        val apps = packageManager.queryIntentActivities(
+            launcherIntent,
+            0
+        )
+
+        val match = apps.firstOrNull { info ->
+            val label = info.loadLabel(packageManager)
+                .toString()
+                .lowercase(Locale.ROOT)
+
+            label == appName
+        } ?: apps.firstOrNull { info ->
+            val label = info.loadLabel(packageManager)
+                .toString()
+                .lowercase(Locale.ROOT)
+
+            label.contains(appName) || appName.contains(label)
+        }
+
+        if (match == null) {
+            say("Не нашёл приложение $appName на вашем телефоне.")
+            return
+        }
+
+        val packageName = match.activityInfo.packageName
+        val launchIntent =
+            packageManager.getLaunchIntentForPackage(packageName)
+
+        if (launchIntent != null) {
+            say("Открываю ${match.loadLabel(packageManager)}.")
+            startActivity(launchIntent)
+        } else {
+            say("Не удалось запустить это приложение.")
         }
     }
 
@@ -227,18 +285,6 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             } finally {
                 connection?.disconnect()
             }
-        }
-    }
-
-    private fun openApp(packageName: String, message: String) {
-        val launchIntent =
-            packageManager.getLaunchIntentForPackage(packageName)
-
-        if (launchIntent != null) {
-            say(message)
-            startActivity(launchIntent)
-        } else {
-            say("Это приложение не найдено на вашем телефоне.")
         }
     }
 
