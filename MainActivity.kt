@@ -1,3 +1,4 @@
+
 package com.filko.jarvis
 
 import android.Manifest
@@ -11,7 +12,11 @@ import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.widget.Button
 import android.widget.TextView
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Locale
+import kotlin.concurrent.thread
 
 class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
@@ -23,6 +28,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     companion object {
         private const val REQUEST_MIC = 100
         private const val REQUEST_SPEECH = 101
+        private const val JARVIS_API_URL =
+            "https://delicate-haze-a0fa.dizsergey525.workers.dev"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +43,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         findViewById<Button>(R.id.listenButton).setOnClickListener {
             checkMicrophone()
         }
+
         findViewById<Button>(R.id.stopButton).setOnClickListener {
             tts?.stop()
             statusText.text = "Голос остановлен"
@@ -48,7 +56,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             ttsReady = result != TextToSpeech.LANG_MISSING_DATA &&
                 result != TextToSpeech.LANG_NOT_SUPPORTED
             statusText.text = if (ttsReady) "Система готова" else
-                "Русский голос недоступен: установите русский голос в настройках"
+                "Русский голос недоступен: установите русский голос"
         } else {
             statusText.text = "Ошибка голосовой системы"
         }
@@ -57,7 +65,10 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private fun checkMicrophone() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
             PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQUEST_MIC)
+            requestPermissions(
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                REQUEST_MIC
+            )
         } else {
             startListening()
         }
@@ -68,7 +79,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        super.onRequestPermissionsResult(
+            requestCode, permissions, grantResults
+        )
         if (requestCode == REQUEST_MIC) {
             if (grantResults.isNotEmpty() &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -88,6 +101,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU")
             putExtra(RecognizerIntent.EXTRA_PROMPT, "Слушаю вас")
         }
+
         try {
             statusText.text = "Слушаю..."
             startActivityForResult(intent, REQUEST_SPEECH)
@@ -97,15 +111,21 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     @Deprecated("Используется системное распознавание речи")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?
+    ) {
         super.onActivityResult(requestCode, resultCode, data)
+
         if (requestCode == REQUEST_SPEECH && resultCode == RESULT_OK) {
             val command = data?.getStringArrayListExtra(
                 RecognizerIntent.EXTRA_RESULTS
             )?.firstOrNull()
+
             if (command != null) {
                 responseText.text = "Вы: $command"
-                processCommand(command.lowercase(Locale.ROOT))
+                processCommand(command)
             } else {
                 say("Я не расслышал команду.")
             }
@@ -115,35 +135,105 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun processCommand(command: String) {
+        val normalized = command.lowercase(Locale.ROOT)
+
         when {
-            command.contains("настройки") -> {
+            normalized.contains("настройки") -> {
                 say("Открываю настройки телефона.")
                 startActivity(Intent(Settings.ACTION_SETTINGS))
             }
-            command.contains("хром") || command.contains("браузер") -> {
+
+            normalized.contains("хром") ||
+                normalized.contains("браузер") -> {
                 openApp("com.android.chrome", "Открываю браузер.")
             }
-            command.contains("ютуб") || command.contains("youtube") -> {
-                openApp("com.google.android.youtube", "Открываю YouTube.")
+
+            normalized.contains("ютуб") ||
+                normalized.contains("youtube") -> {
+                openApp(
+                    "com.google.android.youtube",
+                    "Открываю YouTube."
+                )
             }
-            command.contains("привет") -> {
-                say("Здравствуйте. Рад вас слышать.")
-            }
-            command.contains("как дела") -> {
-                say("Все системы работают штатно. Чем займемся?")
-            }
-            command.contains("кто ты") -> {
-                say("Я Джарвис, ваш персональный помощник FILKO.")
-            }
-            else -> {
-                say("Команду принял. Пока мои возможности ограничены. "
-                    + "Позже подключим искусственный интеллект.")
+
+            else -> askJarvis(command)
+        }
+    }
+
+    private fun askJarvis(message: String) {
+        statusText.text = "Джарвис думает..."
+
+        thread {
+            var connection: HttpURLConnection? = null
+
+            try {
+                connection = (URL(JARVIS_API_URL).openConnection()
+                    as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 20000
+                    readTimeout = 60000
+                    doOutput = true
+                    setRequestProperty(
+                        "Content-Type",
+                        "application/json; charset=utf-8"
+                    )
+                }
+
+                val requestBody = JSONObject()
+                    .put("message", message)
+                    .toString()
+
+                connection.outputStream.use {
+                    it.write(requestBody.toByteArray(Charsets.UTF_8))
+                }
+
+                val code = connection.responseCode
+                val stream = if (code in 200..299) {
+                    connection.inputStream
+                } else {
+                    connection.errorStream
+                }
+
+                val response = stream.bufferedReader().use {
+                    it.readText()
+                }
+
+                val json = JSONObject(response)
+
+                if (code in 200..299) {
+                    val answer = json.optString(
+                        "answer",
+                        "Не удалось получить ответ."
+                    )
+
+                    runOnUiThread {
+                        say(answer)
+                    }
+                } else {
+                    val error = json.optString(
+                        "error",
+                        "Ошибка сервера: $code"
+                    )
+
+                    runOnUiThread {
+                        say("Не удалось получить ответ. $error")
+                    }
+                }
+
+            } catch (e: Exception) {
+                runOnUiThread {
+                    say("Не удалось связаться с сервером. Проверьте интернет.")
+                }
+            } finally {
+                connection?.disconnect()
             }
         }
     }
 
     private fun openApp(packageName: String, message: String) {
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        val launchIntent =
+            packageManager.getLaunchIntentForPackage(packageName)
+
         if (launchIntent != null) {
             say(message)
             startActivity(launchIntent)
@@ -155,8 +245,14 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private fun say(message: String) {
         responseText.text = message
         statusText.text = "Джарвис отвечает"
+
         if (ttsReady) {
-            tts?.speak(message, TextToSpeech.QUEUE_FLUSH, null, "JARVIS_RESPONSE")
+            tts?.speak(
+                message,
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "JARVIS_RESPONSE"
+            )
         }
     }
 
