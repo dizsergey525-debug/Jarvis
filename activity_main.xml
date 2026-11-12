@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#080E18">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FILKO"
+            android:textColor="#42D9FF"
+            android:textSize="22sp"
+            android:letterSpacing="0.3" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="J.A.R.V.I.S."
+            android:textColor="#FFFFFF"
+            android:textSize="34sp"
+            android:textStyle="bold"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Система готова"
+            android:textColor="#42D9FF"
+            android:textSize="16sp"
+            android:layout_marginTop="30dp" />
+
+        <TextView
+            android:id="@+id/responseText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:background="#142333"
+            android:text="Здравствуйте, Сергей. Чем могу помочь?"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:padding="22dp"
+            android:layout_marginTop="25dp"
+            android:layout_marginBottom="30dp" />
+
+        <Button
+            android:id="@+id/listenButton"
+            android:layout_width="match_parent"
+            android:layout_height="65dp"
+            android:text="🎙 ПОЗВАТЬ ДЖАРВИСА"
+            android:textSize="16sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#087FA8" />
+
+        <Button
+            android:id="@+id/stopButton"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:text="ОСТАНОВИТЬ ГОЛОС"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#26394C"
+            android:textColor="#FFFFFF" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="FILKO TECHNOLOGIES • 2026"
+            android:textColor="#52718B"
+            android:gravity="center"
+            android:textSize="12sp"
+            android:layout_marginTop="45dp" />
+    </LinearLayout>
+</ScrollView>
